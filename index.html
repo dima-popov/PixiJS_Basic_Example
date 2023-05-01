@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Pixi.js Example</title>
+    <script src="./pixi.js"></script>
+    <script src="./jquery-3.6.4.js"></script>
+</head>
+
+<body>
+
+    <script>
+        let selected = null;
+
+        // Create the PIXI application and renderer
+        const app = new PIXI.Application({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0xcccccc,
+        });
+
+        document.body.appendChild(app.view);
+
+        const texture = PIXI.Texture.from('./back.png');
+
+        // Create the TilingSprite
+        const tilingSprite = new PIXI.TilingSprite(texture, app.screen.width, app.screen.height);
+
+        // Add the TilingSprite to the stage
+        app.stage.addChild(tilingSprite);
+
+        // Create a Graphics object
+        const graphics = new PIXI.Graphics();
+
+        // Define the vertices of the polygon
+        const vertices = [
+            { x: 100, y: 100 },
+            { x: 200, y: 50 },
+            { x: 300, y: 100 },
+            { x: 300, y: 200 },
+            { x: 200, y: 250 },
+            { x: 100, y: 200 }
+        ];
+
+        // Draw the polygon
+        graphics.beginFill(0xff0000);
+        graphics.lineStyle(2, 0x000000);
+        graphics.drawPolygon(vertices);
+        graphics.endFill();
+
+        // Add the graphics object to the stage
+        app.stage.addChild(graphics);
+
+        // Make the graphics interactive
+        graphics.eventMode = "dynamic";
+        graphics.cursor = "pointer";
+
+        // Add event listeners for mouse and touch events
+        graphics.on('pointerdown', onDragStart);
+        graphics.on('pointerup', onDragEnd);
+        graphics.on('pointerupoutside', onDragEnd);
+
+        graphics.on('pointerover', onPointerOver);
+        graphics.on('pointerout', onPointerOut);
+
+
+        // Create a Graphics object
+        const graphics2 = new PIXI.Graphics();
+
+        // Define the points of the polygonal chain
+        const points = [
+            { x: 100, y: 100 },
+            { x: 150, y: 50 },
+            { x: 200, y: 100 },
+            { x: 250, y: 50 },
+            { x: 300, y: 100 }
+        ];
+
+        // Draw the polygonal chain
+        graphics2.lineStyle(8, 0x000000);
+        graphics2.moveTo(550 + points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            graphics2.lineTo(550 + points[i].x, points[i].y);
+        }
+
+        // Add the graphics object to the stage
+        app.stage.addChild(graphics2);
+
+
+
+        const sprites = [];
+
+        for (let i = 0; i < 1000; i++) {
+            // Create a sprite from an image file
+            const sprite = PIXI.Sprite.from("./cat.jpg");
+
+            // Set the sprite's initial position and scale
+            sprite.anchor.set(0.5);
+            sprite.x = app.screen.width + 10 * i;
+            sprite.y = app.screen.height + 10 * i;
+            sprite.scale.set(0.1);
+            // sprite.position.set(app.screen.width / 2, app.screen.height / 2);
+
+            // Add the sprite to the stage
+            app.stage.addChild(sprite);
+
+            // Make the sprite interactive
+            sprite.eventMode = "dynamic";
+            sprite.cursor = "pointer";
+
+            sprite.on('pointerdown', () => {
+                sprite.tint = 0x00ff00;
+            });
+            sprite.on('pointerup', () => {
+                sprite.tint = 0xffffff;
+            });
+
+
+            // Add event listeners for mouse and touch events
+            sprite.on('pointerdown', onDragStart);
+            sprite.on('pointerup', onDragEnd);
+            sprite.on('pointerupoutside', onDragEnd);
+
+            sprite.on('pointerover', onPointerOver);
+            sprite.on('pointerout', onPointerOut);
+
+            sprites.push(sprite);
+
+        }
+
+
+        // Define the event listener functions
+        function onPointerOver() {
+
+            // Reduce the opacity of the object when it is selected
+            this.alpha = 0.5;
+        }
+
+        function onPointerOut() {
+
+            // Restore the original opacity of the object when it is deselected
+            this.alpha = 1;
+        }
+
+        // Define the event listener functions
+        function onDragStart(event) {
+            selected = this;
+            // Store the current position of the sprite
+            event.stopPropagation();
+            this.data = event.data;
+            this.dragging = true;
+
+        }
+
+        function onDragEnd() {
+            selected = null;
+            // Clear the stored position data and dragging flag
+            this.data = null;
+            this.dragging = false;
+
+        }
+
+        function onDragMove(event) {
+
+            if (selected) {
+                if (selected.dragging) {
+
+                    const newPosition = selected.data.getLocalPosition(selected.parent);
+                    selected.x = newPosition.x;
+                    selected.y = newPosition.y;
+                }
+            }
+        }
+
+        // Animate the sprite
+        app.ticker.add(() => {
+
+            graphics.rotation += 0.005;
+
+        });
+
+        function zoom(s, x, y) {
+
+            s = s > 0 ? 2 : 0.5;
+
+            const worldPos = { x: (x - app.stage.x) / app.stage.scale.x, y: (y - app.stage.y) / app.stage.scale.y };
+            const newScale = { x: app.stage.scale.x * s, y: app.stage.scale.y * s };
+
+            const newScreenPos = { x: (worldPos.x) * newScale.x + app.stage.x, y: (worldPos.y) * newScale.y + app.stage.y };
+
+            app.stage.x -= (newScreenPos.x - x);
+            app.stage.y -= (newScreenPos.y - y);
+            app.stage.scale.x = newScale.x;
+            app.stage.scale.y = newScale.y;
+
+        };
+
+        let lastPos = null
+
+        window.addEventListener('wheel', function (e) {
+            e.stopPropagation();
+            zoom(e.deltaY, e.offsetX, e.offsetY);
+
+        });
+
+        $(app.view)
+            .mousedown(function (e) {
+                lastPos = { x: e.offsetX, y: e.offsetY };
+            }).mouseup(function (event) {
+                lastPos = null;
+            }).mousemove(function (e) {
+                if (lastPos && selected === null) {
+                    app.stage.x += (e.offsetX - lastPos.x);
+                    app.stage.y += (e.offsetY - lastPos.y);
+                    lastPos = { x: e.offsetX, y: e.offsetY };
+                } else {
+                    onDragMove(e);
+                }
+
+            });
+
+    </script>
+</body>
+
+</html>
